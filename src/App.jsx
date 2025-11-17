@@ -16,7 +16,7 @@ function App() {
 
   return (
     <AppProvider>
-      <div className="min-h-screen bg-dark-bg">
+      <div className="min-h-screen bg-dark-bg flex flex-col">
         {/* Header */}
         <header className="bg-dark-card border-b border-dark-border">
           <div className="max-w-7xl mx-auto px-6 py-6">
@@ -60,14 +60,14 @@ function App() {
         </div>
 
         {/* Content */}
-        <main className="max-w-7xl mx-auto px-6 py-8">
+        <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-8">
           {activeTab === 'scanner' && <ScannerTab />}
           {activeTab === 'registro' && <RegistroVisitanteTab />}
           {activeTab === 'historial' && <HistorialAccesosTab />}
         </main>
 
         {/* Footer */}
-        <footer className="bg-dark-card border-t border-dark-border mt-12">
+        <footer className="bg-dark-card border-t border-dark-border mt-auto">
           <div className="max-w-7xl mx-auto px-6 py-4 text-center text-gray-500 text-sm">
             Sistema de Control de Acceso v1.0 - 2025
           </div>

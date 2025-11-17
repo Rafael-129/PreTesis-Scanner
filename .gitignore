@@ -53,3 +53,16 @@ coverage/
 tmp/
 temp/
 
+# Fotos y capturas (si decides guardar localmente)
+uploads/
+fotos/
+
+# Backups
+*.backup
+*.bak
+
+# Package manager locks (opcional - algunos prefieren commitearlos)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
