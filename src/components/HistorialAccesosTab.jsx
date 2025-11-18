@@ -1,55 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { History, Search, CheckCircle2, XCircle, User, Clock, MapPin, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-
-// Datos de ejemplo
-const accesosEjemplo = [
-  {
-    id: 1,
-    nombre: 'María González',
-    tipo: 'Residente',
-    departamento: 'A-101',
-    hora: '08:30',
-    fecha: '4/11/2025',
-    estado: 'Autorizado'
-  },
-  {
-    id: 2,
-    nombre: 'Juan Pérez',
-    tipo: 'Visitante',
-    departamento: 'A-101',
-    hora: '09:15',
-    fecha: '4/11/2025',
-    estado: 'Autorizado'
-  },
-  {
-    id: 3,
-    nombre: 'Desconocido',
-    tipo: 'Visitante',
-    hora: '10:45',
-    fecha: '4/11/2025',
-    estado: 'Denegado'
-  },
-  {
-    id: 4,
-    nombre: 'Carlos Rodríguez',
-    tipo: 'Residente',
-    departamento: 'B-205',
-    hora: '11:20',
-    fecha: '4/11/2025',
-    estado: 'Autorizado'
-  },
-  {
-    id: 5,
-    nombre: 'Laura Torres',
-    tipo: 'Visitante',
-    departamento: 'B-205',
-    hora: '12:00',
-    fecha: '4/11/2025',
-    estado: 'Autorizado'
-  },
-];
+import ApiService from '../services/api';
 
 const EstadisticaCard = ({ titulo, valor, Icon, color }) => {
   const colorClasses = {
@@ -134,7 +87,61 @@ const AccesoItem = ({ acceso }) => {
 
 export default function HistorialAccesosTab() {
   const [busqueda, setBusqueda] = useState('');
-  const [accesos] = useState(accesosEjemplo);
+  const [accesos, setAccesos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [paginaActual, setPaginaActual] = useState(1);
+  const registrosPorPagina = 10;
+
+  // Cargar historial al montar el componente
+  useEffect(() => {
+    cargarHistorial();
+  }, []);
+
+  const cargarHistorial = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await ApiService.obtenerHistorialAccesos();
+      const historialData = response.results || response;
+      
+      // Transformar datos del backend al formato esperado
+      const historialFormateado = historialData.map(acceso => {
+        // Mapear estados
+        let estadoMostrar = 'Denegado';
+        if (acceso.estado === 'entrada' || acceso.estado === 'Permitido') {
+          estadoMostrar = 'Autorizado';
+        } else if (acceso.estado === 'salida') {
+          estadoMostrar = 'Salida';
+        } else if (acceso.estado === 'Denegado') {
+          estadoMostrar = 'Denegado';
+        }
+
+        return {
+          id: acceso.idhistorial,
+          nombre: acceso.usuario_info ? 
+            `${acceso.usuario_info.nombre} ${acceso.usuario_info.apellido}` :
+            acceso.visitante_info ?
+            `${acceso.visitante_info.nombre} ${acceso.visitante_info.apellido}` :
+            'Desconocido',
+          tipo: acceso.idusuario ? 'Residente' : 'Visitante',
+          departamento: acceso.usuario_info?.departamento || acceso.visitante_info?.depart_visita || 'N/A',
+          hora: acceso.hora_entrada,
+          fecha: acceso.fecha_entrada,
+          estado: estadoMostrar
+        };
+      });
+      
+      setAccesos(historialFormateado);
+    } catch (err) {
+      console.error('Error al cargar historial:', err);
+      setError('No se pudo cargar el historial de accesos');
+      // Mantener datos de ejemplo en caso de error
+      setAccesos([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const totalAccesos = accesos.length;
   const autorizados = accesos.filter(a => a.estado === 'Autorizado').length;
@@ -144,6 +151,23 @@ export default function HistorialAccesosTab() {
     acceso.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
     acceso.departamento?.toLowerCase().includes(busqueda.toLowerCase())
   );
+
+  // Calcular paginación
+  const totalPaginas = Math.ceil(accesosFiltrados.length / registrosPorPagina);
+  const indiceInicio = (paginaActual - 1) * registrosPorPagina;
+  const indiceFin = indiceInicio + registrosPorPagina;
+  const accesosPaginados = accesosFiltrados.slice(indiceInicio, indiceFin);
+
+  // Resetear a página 1 cuando cambie la búsqueda
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [busqueda]);
+
+  const cambiarPagina = (nuevaPagina) => {
+    if (nuevaPagina >= 1 && nuevaPagina <= totalPaginas) {
+      setPaginaActual(nuevaPagina);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -191,11 +215,29 @@ export default function HistorialAccesosTab() {
         </div>
 
         {/* Lista de accesos */}
-        <div className="space-y-3 max-h-[600px] overflow-y-auto">
-          {accesosFiltrados.length > 0 ? (
-            accesosFiltrados.map(acceso => (
-              <AccesoItem key={acceso.id} acceso={acceso} />
-            ))
+        <div className="space-y-3">
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-3"></div>
+              <p className="text-gray-400">Cargando historial...</p>
+            </div>
+          ) : error ? (
+            <div className="text-center py-12">
+              <XCircle className="w-16 h-16 text-red-500 mx-auto mb-3" />
+              <p className="text-red-400">{error}</p>
+              <button
+                onClick={cargarHistorial}
+                className="mt-4 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+              >
+                Reintentar
+              </button>
+            </div>
+          ) : accesosPaginados.length > 0 ? (
+            <>
+              {accesosPaginados.map(acceso => (
+                <AccesoItem key={acceso.id} acceso={acceso} />
+              ))}
+            </>
           ) : (
             <div className="text-center py-12">
               <History className="w-16 h-16 text-gray-600 mx-auto mb-3" />
@@ -203,6 +245,65 @@ export default function HistorialAccesosTab() {
             </div>
           )}
         </div>
+
+        {/* Paginación */}
+        {!loading && !error && accesosFiltrados.length > registrosPorPagina && (
+          <div className="flex items-center justify-between mt-6 pt-6 border-t border-slate-700">
+            <div className="text-sm text-gray-400">
+              Mostrando {indiceInicio + 1} - {Math.min(indiceFin, accesosFiltrados.length)} de {accesosFiltrados.length} registros
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => cambiarPagina(paginaActual - 1)}
+                disabled={paginaActual === 1}
+                className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Anterior
+              </button>
+              
+              <div className="flex items-center gap-1">
+                {[...Array(totalPaginas)].map((_, index) => {
+                  const numeroPagina = index + 1;
+                  // Mostrar solo algunas páginas alrededor de la actual
+                  if (
+                    numeroPagina === 1 ||
+                    numeroPagina === totalPaginas ||
+                    (numeroPagina >= paginaActual - 1 && numeroPagina <= paginaActual + 1)
+                  ) {
+                    return (
+                      <button
+                        key={numeroPagina}
+                        onClick={() => cambiarPagina(numeroPagina)}
+                        className={`px-3 py-2 rounded-lg transition-colors ${
+                          paginaActual === numeroPagina
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-slate-800 text-gray-400 hover:bg-slate-700'
+                        }`}
+                      >
+                        {numeroPagina}
+                      </button>
+                    );
+                  } else if (
+                    numeroPagina === paginaActual - 2 ||
+                    numeroPagina === paginaActual + 2
+                  ) {
+                    return <span key={numeroPagina} className="text-gray-600 px-2">...</span>;
+                  }
+                  return null;
+                })}
+              </div>
+              
+              <button
+                onClick={() => cambiarPagina(paginaActual + 1)}
+                disabled={paginaActual === totalPaginas}
+                className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

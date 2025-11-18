@@ -1,39 +1,81 @@
 import { useState, useRef } from 'react';
 import Webcam from 'react-webcam';
 import { Camera, User } from 'lucide-react';
+import ApiService from '../services/api';
 
 const ScannerFacial = ({ onScanComplete }) => {
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState(null);
   const [cameraActive, setCameraActive] = useState(false);
+  const [error, setError] = useState(null);
   const webcamRef = useRef(null);
 
   const iniciarEscaneo = async () => {
     setIsScanning(true);
     setScanResult(null);
+    setError(null);
     
-    // Simular procesamiento de escaneo (aquí iría la lógica de reconocimiento facial)
-    setTimeout(() => {
+    try {
       // Capturar imagen de la webcam
       const imageSrc = webcamRef.current?.getScreenshot();
       
-      // Resultado simulado - en producción vendría del backend
-      const resultado = {
+      if (!imageSrc) {
+        throw new Error('No se pudo capturar la imagen');
+      }
+
+      // Enviar al backend para procesamiento
+      const escaneoData = {
         foto_capturada: imageSrc,
-        tipo_persona: 'residente', // o 'visitante', 'desconocido'
-        confianza_reconocimiento: 95.5,
-        nombre: 'Juan Pérez',
-        departamento: 'A-101',
-        estado: 'AUTORIZADO'
+        tipo_persona: 'visitante' // Por defecto, el backend puede determinarlo mejor
+      };
+
+      const resultado = await ApiService.procesarEscaneo(escaneoData);
+      
+      // Adaptar respuesta del backend
+      const resultadoFormateado = {
+        foto_capturada: imageSrc,
+        tipo_persona: resultado.tipo_persona || 'desconocido',
+        confianza_reconocimiento: 95.5, // El backend podría devolver esto
+        nombre: resultado.idusuario ? 
+          `${resultado.usuario_info?.nombre || ''} ${resultado.usuario_info?.apellido || ''}`.trim() :
+          resultado.idvisitante ?
+          `${resultado.visitante_info?.nombre || ''} ${resultado.visitante_info?.apellido || ''}`.trim() :
+          'Desconocido',
+        departamento: resultado.usuario_info?.departamento || resultado.visitante_info?.depart_visita || 'N/A',
+        estado: resultado.tipo_persona !== 'desconocido' ? 'AUTORIZADO' : 'DESCONOCIDO'
       };
       
-      setScanResult(resultado);
-      setIsScanning(false);
+      setScanResult(resultadoFormateado);
       
       if (onScanComplete) {
-        onScanComplete(resultado);
+        onScanComplete(resultadoFormateado);
       }
-    }, 2000);
+
+      // Registrar en historial de accesos
+      await ApiService.registrarAcceso({
+        idscanner: resultado.idscanner,
+        idusuario: resultado.idusuario || null,
+        idvisitante: resultado.idvisitante || null,
+        fecha_entrada: new Date().toISOString().split('T')[0],
+        hora_entrada: new Date().toTimeString().split(' ')[0],
+        estado: resultadoFormateado.estado === 'AUTORIZADO' ? 'Permitido' : 'Denegado'
+      });
+      
+    } catch (err) {
+      console.error('Error en escaneo:', err);
+      setError(err.message || 'Error al procesar el escaneo');
+      
+      // Resultado de error
+      const resultadoError = {
+        foto_capturada: webcamRef.current?.getScreenshot(),
+        tipo_persona: 'error',
+        nombre: 'Error en escaneo',
+        estado: 'ERROR'
+      };
+      setScanResult(resultadoError);
+    } finally {
+      setIsScanning(false);
+    }
   };
 
   return (
@@ -85,6 +127,12 @@ const ScannerFacial = ({ onScanComplete }) => {
       >
         {!cameraActive ? 'Activar Cámara' : isScanning ? 'Escaneando...' : 'Iniciar Escaneo'}
       </button>
+
+      {error && (
+        <div className="mt-4 p-3 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400 text-sm">
+          {error}
+        </div>
+      )}
     </div>
   );
 };

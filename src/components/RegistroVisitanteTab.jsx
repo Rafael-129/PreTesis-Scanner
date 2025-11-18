@@ -1,7 +1,8 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { UserPlus, Camera, Calendar, Clock, MapPin, Phone, IdCard, FileText } from 'lucide-react';
 import Webcam from 'react-webcam';
 import { format } from 'date-fns';
+import ApiService from '../services/api';
 
 export default function RegistroVisitanteTab() {
   const [formData, setFormData] = useState({
@@ -19,7 +20,33 @@ export default function RegistroVisitanteTab() {
 
   const [showCamera, setShowCamera] = useState(false);
   const [fotoCaptured, setFotoCaptured] = useState(null);
+  const [departamentos, setDepartamentos] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const webcamRef = useRef(null);
+
+  // Cargar departamentos al montar el componente
+  useEffect(() => {
+    cargarDepartamentos();
+  }, []);
+
+  const cargarDepartamentos = async () => {
+    try {
+      const response = await ApiService.obtenerDepartamentos();
+      setDepartamentos(response.results || response);
+    } catch (err) {
+      console.error('Error al cargar departamentos:', err);
+      // Usar datos de respaldo si falla
+      setDepartamentos([
+        { codigo: 'A-101' },
+        { codigo: 'A-102' },
+        { codigo: 'A-201' },
+        { codigo: 'B-101' },
+        { codigo: 'B-201' },
+        { codigo: 'B-205' }
+      ]);
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -55,12 +82,39 @@ export default function RegistroVisitanteTab() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Aquí iría la lógica para enviar al backend
-    console.log('Registrando visitante:', formData);
-    
-    // Simular registro exitoso
-    alert('Visitante registrado exitosamente');
-    limpiarFormulario();
+    if (!formData.foto) {
+      alert('Por favor, capture una foto del visitante');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Preparar datos para enviar al backend
+      const visitanteData = {
+        nombre: formData.nombre,
+        apellido: formData.apellido,
+        dni: formData.dni,
+        motivo: formData.motivo || '',
+        fecha_visita: formData.fecha_visita,
+        hora_visita: formData.hora_visita,
+        depart_visita: formData.depart_visita,
+        foto: formData.foto
+      };
+
+      const response = await ApiService.registrarVisitante(visitanteData);
+      
+      console.log('Visitante registrado:', response);
+      alert('✅ Visitante registrado exitosamente');
+      limpiarFormulario();
+    } catch (err) {
+      console.error('Error al registrar visitante:', err);
+      setError(err.message || 'Error al registrar visitante');
+      alert('❌ Error al registrar visitante: ' + (err.message || 'Intente nuevamente'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -144,12 +198,11 @@ export default function RegistroVisitanteTab() {
                     className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-11 pr-4 py-2.5 text-white focus:outline-none focus:border-blue-500 transition-colors appearance-none cursor-pointer"
                   >
                     <option value="">Selecciona departamento</option>
-                    <option value="A-101">A-101</option>
-                    <option value="A-102">A-102</option>
-                    <option value="A-201">A-201</option>
-                    <option value="B-101">B-101</option>
-                    <option value="B-201">B-201</option>
-                    <option value="B-205">B-205</option>
+                    {departamentos.map((depto, index) => (
+                      <option key={index} value={depto.codigo}>
+                        {depto.codigo}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -318,20 +371,28 @@ export default function RegistroVisitanteTab() {
           <div className="flex gap-4 mt-8 pt-6 border-t border-dark-border">
             <button
               type="submit"
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition-colors inline-flex items-center justify-center gap-2"
+              disabled={loading}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <UserPlus className="w-5 h-5" />
-              Registrar Visitante
+              {loading ? 'Registrando...' : 'Registrar Visitante'}
             </button>
             
             <button
               type="button"
               onClick={limpiarFormulario}
-              className="px-8 bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-lg font-medium transition-colors"
+              disabled={loading}
+              className="px-8 bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Limpiar
             </button>
           </div>
+
+          {error && (
+            <div className="mt-4 p-4 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400 text-sm">
+              {error}
+            </div>
+          )}
         </form>
       </div>
     </div>

@@ -1,6 +1,6 @@
-// API Service - Preparado para integración con backend
+// API Service - Integrado con Django REST Framework
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 
 class ApiService {
   /**
@@ -33,7 +33,7 @@ class ApiService {
 
   // ============ SCANNER ============
   async procesarEscaneo(data) {
-    return this.request('/scanner', {
+    return this.request('/scanner/', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -41,12 +41,16 @@ class ApiService {
 
   async obtenerEscaneos(filtros = {}) {
     const params = new URLSearchParams(filtros);
-    return this.request(`/scanner?${params}`);
+    return this.request(`/scanner/?${params}`);
+  }
+
+  async obtenerEscaneosRecientes() {
+    return this.request('/scanner/recientes/');
   }
 
   // ============ VISITANTES ============
   async registrarVisitante(visitante) {
-    return this.request('/visitantes', {
+    return this.request('/visitantes/', {
       method: 'POST',
       body: JSON.stringify(visitante),
     });
@@ -54,87 +58,77 @@ class ApiService {
 
   async obtenerVisitantes(filtros = {}) {
     const params = new URLSearchParams(filtros);
-    return this.request(`/visitantes?${params}`);
+    return this.request(`/visitantes/?${params}`);
   }
 
   async obtenerVisitante(id) {
-    return this.request(`/visitantes/${id}`);
+    return this.request(`/visitantes/${id}/`);
   }
 
   async actualizarVisitante(id, data) {
-    return this.request(`/visitantes/${id}`, {
+    return this.request(`/visitantes/${id}/`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
   async eliminarVisitante(id) {
-    return this.request(`/visitantes/${id}`, {
+    return this.request(`/visitantes/${id}/`, {
       method: 'DELETE',
     });
+  }
+
+  async obtenerVisitantesHoy() {
+    return this.request('/visitantes/hoy/');
   }
 
   // ============ USUARIOS (RESIDENTES) ============
   async obtenerUsuarios(filtros = {}) {
     const params = new URLSearchParams(filtros);
-    return this.request(`/usuarios?${params}`);
+    return this.request(`/usuarios/?${params}`);
   }
 
   async obtenerUsuario(id) {
-    return this.request(`/usuarios/${id}`);
+    return this.request(`/usuarios/${id}/`);
   }
 
   async buscarUsuarioPorDNI(dni) {
-    return this.request(`/usuarios/buscar/${dni}`);
+    return this.request(`/usuarios/buscar_por_dni/?dni=${dni}`);
   }
 
   // ============ HISTORIAL ACCESOS ============
   async obtenerHistorialAccesos(filtros = {}) {
     const params = new URLSearchParams(filtros);
-    return this.request(`/historial-accesos?${params}`);
+    return this.request(`/historial/?${params}`);
   }
 
   async registrarAcceso(acceso) {
-    return this.request('/historial-accesos', {
+    return this.request('/historial/', {
       method: 'POST',
       body: JSON.stringify(acceso),
     });
   }
 
+  async obtenerHistorialHoy() {
+    return this.request('/historial/hoy/');
+  }
+
+  async obtenerAccesosActivos() {
+    return this.request('/historial/activos/');
+  }
+
   async obtenerEstadisticas(fechaDesde, fechaHasta) {
-    return this.request(`/historial-accesos/estadisticas?desde=${fechaDesde}&hasta=${fechaHasta}`);
+    return this.request(`/historial/estadisticas/?desde=${fechaDesde}&hasta=${fechaHasta}`);
   }
 
-  // ============ CÁMARAS ============
-  async obtenerCamaras() {
-    return this.request('/camaras');
+  // ============ DEPARTAMENTOS ============
+  async obtenerDepartamentos(filtros = {}) {
+    const params = new URLSearchParams(filtros);
+    return this.request(`/departamentos/?${params}`);
   }
 
-  async obtenerStreamCamara(id) {
-    return this.request(`/camaras/${id}/stream`);
-  }
-
-  // ============ NOTIFICACIONES ============
-  async obtenerNotificaciones(idUsuario) {
-    return this.request(`/notificaciones?idUsuario=${idUsuario}`);
-  }
-
-  async marcarNotificacionLeida(id) {
-    return this.request(`/notificaciones/${id}/leer`, {
-      method: 'PATCH',
-    });
-  }
-
-  // ============ CONFIGURACIÓN ============
-  async obtenerConfiguracion() {
-    return this.request('/configuracion');
-  }
-
-  async actualizarConfiguracion(parametro, valor) {
-    return this.request('/configuracion', {
-      method: 'PUT',
-      body: JSON.stringify({ parametro, valor }),
-    });
+  async obtenerDepartamento(id) {
+    return this.request(`/departamentos/${id}/`);
   }
 
   // ============ UPLOAD DE ARCHIVOS ============
