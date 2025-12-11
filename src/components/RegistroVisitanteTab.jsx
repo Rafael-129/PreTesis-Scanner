@@ -129,16 +129,32 @@ export default function RegistroVisitanteTab() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Columna Izquierda */}
             <div className="space-y-4">
-              {/* Nombre Completo */}
+              {/* Nombre */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Nombre Completo *
+                  Nombre *
                 </label>
                 <input
                   type="text"
                   name="nombre"
-                  placeholder="Ej: Juan Pérez"
+                  placeholder="Ej: Juan"
                   value={formData.nombre}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+
+              {/* Apellido */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Apellido *
+                </label>
+                <input
+                  type="text"
+                  name="apellido"
+                  placeholder="Ej: Pérez"
+                  value={formData.apellido}
                   onChange={handleInputChange}
                   required
                   className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"

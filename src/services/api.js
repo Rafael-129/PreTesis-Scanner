@@ -20,8 +20,9 @@ class ApiService {
       const response = await fetch(url, config);
       
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Error en la petición');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Error del servidor:', errorData);
+        throw new Error(JSON.stringify(errorData) || 'Error en la petición');
       }
 
       return await response.json();
